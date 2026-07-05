@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/account_providers.dart';
 import '../../providers/list_providers.dart';
 import '../../providers/db_providers.dart';
-import '../../models/account.dart';
 
 class ManageListsScreen extends ConsumerWidget {
   const ManageListsScreen({super.key});
@@ -11,80 +9,16 @@ class ManageListsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('More'),
           bottom: const TabBar(tabs: [
-            Tab(text: 'Accounts'),
             Tab(text: 'Categories'),
             Tab(text: 'Income'),
           ]),
         ),
-        body: TabBarView(children: [_AccountsTab(), _CategoriesTab(), _IncomeSourcesTab()]),
-      ),
-    );
-  }
-}
-
-class _AccountsTab extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final accounts = ref.watch(accountsProvider);
-    return Scaffold(
-      body: accounts.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text('Error: $e'),
-        data: (list) => ListView(
-          children: list.map((a) => ListTile(title: Text(a.name), trailing: Text(a.type.name))).toList(),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddAccountDialog(context, ref),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  void _showAddAccountDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
-    AccountType type = AccountType.debit;
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('New Account'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: controller, decoration: const InputDecoration(labelText: 'Name')),
-              const SizedBox(height: 12),
-              SegmentedButton<AccountType>(
-                segments: const [
-                  ButtonSegment(value: AccountType.debit, label: Text('Debit')),
-                  ButtonSegment(value: AccountType.credit, label: Text('Credit')),
-                ],
-                selected: {type},
-                onSelectionChanged: (s) => setState(() => type = s.first),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                if (controller.text.trim().isEmpty) return;
-                await ref.read(accountRepositoryProvider).create(
-                      Account(name: controller.text.trim(), type: type),
-                    );
-                ref.invalidate(accountsProvider);
-                ref.invalidate(accountBalancesProvider);
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
+        body: TabBarView(children: [_CategoriesTab(), _IncomeSourcesTab()]),
       ),
     );
   }
@@ -101,6 +35,7 @@ class _CategoriesTab extends ConsumerWidget {
         data: (list) => ListView(children: list.map((c) => ListTile(title: Text(c.name))).toList()),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'categories_add_fab',
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
       ),
@@ -142,6 +77,7 @@ class _IncomeSourcesTab extends ConsumerWidget {
         data: (list) => ListView(children: list.map((s) => ListTile(title: Text(s.name))).toList()),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'income_sources_add_fab',
         onPressed: () => _showAddDialog(context, ref),
         child: const Icon(Icons.add),
       ),

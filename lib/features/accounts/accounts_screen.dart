@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/account.dart';
 import '../../providers/account_providers.dart';
+import '../../providers/db_providers.dart';
 import '../../core/utils/currency.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -35,6 +36,11 @@ class AccountsScreen extends ConsumerWidget {
                 ),
               ),
               const Divider(height: 1),
+              if (debit.isEmpty && credit.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text('No accounts yet — tap + to add one')),
+                ),
               ...debit.map((b) => ListTile(
                     title: Text(b.account.name),
                     trailing: Text(formatUgx(b.current)),
@@ -47,6 +53,54 @@ class AccountsScreen extends ConsumerWidget {
             ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'accounts_add_fab',
+        onPressed: () => _showAddAccountDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddAccountDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController();
+    AccountType type = AccountType.debit;
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('New Account'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: controller, decoration: const InputDecoration(labelText: 'Name')),
+              const SizedBox(height: 12),
+              SegmentedButton<AccountType>(
+                segments: const [
+                  ButtonSegment(value: AccountType.debit, label: Text('Debit')),
+                  ButtonSegment(value: AccountType.credit, label: Text('Credit')),
+                ],
+                selected: {type},
+                onSelectionChanged: (s) => setState(() => type = s.first),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                if (controller.text.trim().isEmpty) return;
+                await ref.read(accountRepositoryProvider).create(
+                      Account(name: controller.text.trim(), type: type),
+                    );
+                ref.invalidate(accountsProvider);
+                ref.invalidate(accountBalancesProvider);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }

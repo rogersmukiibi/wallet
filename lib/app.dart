@@ -38,6 +38,7 @@ class _HomeShellState extends State<HomeShell> {
     return Scaffold(
       body: _screens[_index],
       floatingActionButton: FloatingActionButton(
+        heroTag: 'home_add_transaction_fab',
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
         ),
