@@ -28,17 +28,41 @@ class _CategoriesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoriesProvider);
-    return Scaffold(
-      body: categories.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text('Error: $e'),
-        data: (list) => ListView(children: list.map((c) => ListTile(title: Text(c.name))).toList()),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'categories_add_fab',
-        onPressed: () => _showAddDialog(context, ref),
-        child: const Icon(Icons.add),
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          child: Row(
+            children: [
+              const Expanded(child: Text('Expense categories', style: TextStyle(color: Colors.grey))),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Add category',
+                onPressed: () => _showAddDialog(context, ref),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: categories.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error: $e'),
+            data: (list) => ListView(
+              children: list.map((c) => ListTile(
+                    title: Text(c.name),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.archive_outlined),
+                      tooltip: 'Archive',
+                      onPressed: () async {
+                        await ref.read(categoryRepositoryProvider).archive(c.id!);
+                        ref.invalidate(categoriesProvider);
+                      },
+                    ),
+                  )).toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -70,17 +94,41 @@ class _IncomeSourcesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sources = ref.watch(incomeSourcesProvider);
-    return Scaffold(
-      body: sources.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Text('Error: $e'),
-        data: (list) => ListView(children: list.map((s) => ListTile(title: Text(s.name))).toList()),
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'income_sources_add_fab',
-        onPressed: () => _showAddDialog(context, ref),
-        child: const Icon(Icons.add),
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          child: Row(
+            children: [
+              const Expanded(child: Text('Income sources', style: TextStyle(color: Colors.grey))),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Add income source',
+                onPressed: () => _showAddDialog(context, ref),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: sources.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => Text('Error: $e'),
+            data: (list) => ListView(
+              children: list.map((s) => ListTile(
+                    title: Text(s.name),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.archive_outlined),
+                      tooltip: 'Archive',
+                      onPressed: () async {
+                        await ref.read(incomeSourceRepositoryProvider).archive(s.id!);
+                        ref.invalidate(incomeSourcesProvider);
+                      },
+                    ),
+                  )).toList(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

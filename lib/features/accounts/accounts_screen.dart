@@ -13,7 +13,18 @@ class AccountsScreen extends ConsumerWidget {
     final balances = ref.watch(accountBalancesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Accounts')),
+      appBar: AppBar(
+        title: const Text('Accounts'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Manage accounts',
+            // Pass THIS screen's context/ref through — these stay alive
+            // for as long as AccountsScreen itself is on screen.
+            onPressed: () => _showManageSheet(context, ref),
+          ),
+        ],
+      ),
       body: balances.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -37,9 +48,15 @@ class AccountsScreen extends ConsumerWidget {
               ),
               const Divider(height: 1),
               if (debit.isEmpty && credit.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: Text('No accounts yet — tap + to add one')),
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Center(
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add your first account'),
+                      onPressed: () => _showManageSheet(context, ref),
+                    ),
+                  ),
                 ),
               ...debit.map((b) => ListTile(
                     title: Text(b.account.name),
@@ -54,10 +71,61 @@ class AccountsScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'accounts_add_fab',
-        onPressed: () => _showAddAccountDialog(context, ref),
-        child: const Icon(Icons.add),
+    );
+  }
+
+  // screenContext/screenRef = AccountsScreen's own — safe to use even
+  // after the bottom sheet below has been popped and disposed.
+  void _showManageSheet(BuildContext screenContext, WidgetRef screenRef) {
+    showModalBottomSheet(
+      context: screenContext,
+      isScrollControlled: true,
+      builder: (sheetContext) => Consumer(
+        builder: (consumerContext, consumerRef, _) {
+          final accounts = consumerRef.watch(accountsProvider);
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Manage accounts', style: Theme.of(consumerContext).textTheme.titleMedium),
+                  const SizedBox(height: 12),
+                  accounts.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Text('Error: $e'),
+                    data: (list) => Column(
+                      children: list.map((a) => ListTile(
+                            title: Text(a.name),
+                            subtitle: Text(a.type.name),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.archive_outlined),
+                              tooltip: 'Archive',
+                              // Safe: sheet is still open, consumerRef is alive here.
+                              onPressed: () async {
+                                await consumerRef.read(accountRepositoryProvider).archive(a.id!);
+                                consumerRef.invalidate(accountsProvider);
+                                consumerRef.invalidate(accountBalancesProvider);
+                              },
+                            ),
+                          )).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add account'),
+                    onPressed: () {
+                      Navigator.pop(sheetContext); // close using the SHEET's own context
+                      _showAddAccountDialog(screenContext, screenRef); // reopen using the SCREEN's
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -67,8 +135,8 @@ class AccountsScreen extends ConsumerWidget {
     AccountType type = AccountType.debit;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
           title: const Text('New Account'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -86,7 +154,7 @@ class AccountsScreen extends ConsumerWidget {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
             FilledButton(
               onPressed: () async {
                 if (controller.text.trim().isEmpty) return;
@@ -95,7 +163,7 @@ class AccountsScreen extends ConsumerWidget {
                     );
                 ref.invalidate(accountsProvider);
                 ref.invalidate(accountBalancesProvider);
-                if (context.mounted) Navigator.pop(context);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
               },
               child: const Text('Add'),
             ),
