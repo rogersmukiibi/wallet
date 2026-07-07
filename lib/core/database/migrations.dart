@@ -98,8 +98,17 @@ const List<String> migrationV1 = [
   "INSERT INTO categories (name, sort_order) VALUES ('Fees', 0)",
 ];
 
+const List<String> migrationV2 = [
+  // Balance Adjustment mirrors Fees: seeded here, excluded from manual
+  // pickers in category_repository/income_source_repository, only ever
+  // written by AccountRepository.adjustBalanceTo().
+  "INSERT INTO categories (name, sort_order) VALUES ('Balance Adjustment', 1)",
+  "INSERT INTO income_sources (name, sort_order) VALUES ('Balance Adjustment', 0)",
+];
+
 /// Add migrationV2, migrationV3, etc. here as the schema evolves.
 /// db_provider.dart concatenates whichever are newer than the stored version.
 const Map<int, List<String>> migrations = {
   1: migrationV1,
+  2: migrationV2,
 };
