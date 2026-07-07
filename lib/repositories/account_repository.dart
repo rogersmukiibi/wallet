@@ -101,6 +101,28 @@ class AccountRepository {
     }
   }
 
+  /// Recomputes every stored rollover from [month] forward.
+  ///
+  /// This keeps later months in sync after a backdated transaction changes a
+  /// prior month. It stops once the next month no longer has a stored rollover,
+  /// which means it only refreshes months that were previously carried forward.
+  Future<void> recalculateRolloversFrom(MonthKey month) async {
+    final db = await ref.read(databaseProvider.future);
+    var cursor = month;
+    while (true) {
+      final next = cursor.next;
+      final hasNextRollover = await db.query(
+        'account_rollovers',
+        where: 'month = ?',
+        whereArgs: [next.key],
+        limit: 1,
+      );
+      if (hasNextRollover.isEmpty) break;
+      await carryForward(cursor);
+      cursor = next;
+    }
+  }
+
   /// For a freshly created account with no transaction history yet: writes
   /// the starting balance directly as [month]'s rollover. Not a transaction
   /// — there's no prior activity to reconcile against, so nothing to log.

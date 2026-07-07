@@ -1,6 +1,11 @@
+// lib/providers/transaction_form_providers.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/tx_type.dart';
+import '../core/utils/month.dart';
 import 'db_providers.dart';
+import 'account_providers.dart';
+import 'transaction_providers.dart';
 
 class TransactionFormState {
   final TxType type;
@@ -123,6 +128,19 @@ class TransactionFormNotifier extends StateNotifier<TransactionFormState> {
               note: state.note,
             );
     }
+    
+    // Re-baseline every later month's rollover in case this entry landed
+    // in a past month whose closing balance had already been carried forward.
+    await ref.read(accountRepositoryProvider).recalculateRolloversFrom(
+          MonthKey.fromDate(state.dateTime),
+        );
+
+    // Refresh every screen that shows computed balances/totals.
+    ref.invalidate(accountsProvider);
+    ref.invalidate(accountBalancesProvider);
+    ref.invalidate(monthEntriesProvider);
+    ref.invalidate(monthSummaryTotalsProvider);
+    ref.invalidate(calendarGridTotalsProvider);
   }
 }
 

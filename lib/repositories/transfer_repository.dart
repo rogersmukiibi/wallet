@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/utils/month.dart';
 import '../models/transfer.dart';
 import '../providers/db_providers.dart';
 
@@ -15,10 +16,12 @@ class TransferRepository {
     String? note,
   }) async {
     final db = await ref.read(databaseProvider.future);
-    return db.insert('transfers', Transfer(
+    final id = await db.insert('transfers', Transfer(
       date: date, amount: amount, fee: fee,
       fromAccountId: fromAccountId, toAccountId: toAccountId, note: note,
     ).toMap());
+    await ref.read(accountRepositoryProvider).recalculateRolloversFrom(MonthKey.fromDate(date));
+    return id;
   }
 
   Future<List<Transfer>> getForMonth(String monthKey) async {
@@ -30,6 +33,11 @@ class TransferRepository {
 
   Future<void> delete(int id) async {
     final db = await ref.read(databaseProvider.future);
+    final rows = await db.query('transfers', where: 'id = ?', whereArgs: [id], limit: 1);
     await db.delete('transfers', where: 'id = ?', whereArgs: [id]);
+    if (rows.isNotEmpty) {
+      await ref.read(accountRepositoryProvider)
+          .recalculateRolloversFrom(MonthKey.fromDate(DateTime.parse(rows.first['date'] as String)));
+    }
   }
 }
