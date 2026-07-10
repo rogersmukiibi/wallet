@@ -54,4 +54,18 @@ class ExpenseRepository {
         where: 'date >= ? AND date < ?', whereArgs: [startStr, endExclusive], orderBy: 'date DESC');
     return rows.map(Expense.fromMap).toList();
   }
+
+  Future<Expense?> getById(int id) async {
+    final db = await ref.read(databaseProvider.future);
+    final rows = await db.query('expenses', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : Expense.fromMap(rows.first);
+  }
+
+  /// Updates an existing expense. Caller is responsible for triggering
+  /// rollover recalculation for both the old and new date's month if the
+  /// date changed — this method only writes the row.
+  Future<void> update(Expense expense) async {
+    final db = await ref.read(databaseProvider.future);
+    await db.update('expenses', expense.toMap(), where: 'id = ?', whereArgs: [expense.id]);
+  }
 }

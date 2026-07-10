@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'add_transaction_screen.dart';
 import '../../providers/selected_month_provider.dart';
 import '../../providers/transaction_providers.dart';
 import '../../core/utils/currency.dart';
@@ -62,6 +63,9 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
                       title: Text(e.label),
                       subtitle: Text('${e.date.day}/${e.date.month}/${e.date.year}'),
                       trailing: Text(formatUgx(e.amount), style: TextStyle(color: color)),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => AddTransactionScreen(editing: e)),
+                      ),
                     );
                   },
                 );
@@ -264,6 +268,9 @@ class _DayDetailScreen extends ConsumerWidget {
               return ListTile(
                 title: Text(e.label),
                 trailing: Text(formatUgx(e.amount), style: TextStyle(color: color)),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => AddTransactionScreen(editing: e)),
+                ),
               );
             },
           );

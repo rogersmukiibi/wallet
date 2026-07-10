@@ -10,12 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'db_providers.dart';
 import 'selected_month_provider.dart';
 import '../core/utils/month.dart';
+import '../models/tx_type.dart';
 
 class TxEntry {
+  final int id;
+  final TxType type;
   final DateTime date;
   final int amount;
   final String label;
-  const TxEntry(this.date, this.amount, this.label);
+  const TxEntry(this.id, this.type, this.date, this.amount, this.label);
 }
 
 Future<List<TxEntry>> _loadMonthEntries(Ref ref, MonthKey month) async {
@@ -27,14 +30,24 @@ Future<List<TxEntry>> _loadMonthEntries(Ref ref, MonthKey month) async {
   final sources = {for (final s in await ref.read(incomeSourceRepositoryProvider).getAll()) s.id: s.name};
   final accounts = {for (final a in await ref.read(accountRepositoryProvider).getAll()) a.id: a.name};
 
-  return [
-    ...expenses.map((e) => TxEntry(e.date, -e.amount,
+  final entries = [
+    ...expenses.map((e) => TxEntry(e.id!, TxType.expense, e.date, -e.amount,
         '${categories[e.categoryId] ?? '?'} · ${accounts[e.accountId] ?? '?'}')),
-    ...incomes.map((i) => TxEntry(i.date, i.amount,
+    ...incomes.map((i) => TxEntry(i.id!, TxType.income, i.date, i.amount,
         '${sources[i.sourceId] ?? '?'} · ${accounts[i.accountId] ?? '?'}')),
-    ...transfers.map((t) => TxEntry(t.date, -t.amount,
+    ...transfers.map((t) => TxEntry(t.id!, TxType.transfer, t.date, -t.amount,
         '${accounts[t.fromAccountId] ?? '?'} → ${accounts[t.toAccountId] ?? '?'}')),
-  ]..sort((a, b) => b.date.compareTo(a.date));
+  ];
+
+  entries.sort((a, b) {
+    final dateOnlyA = DateTime(a.date.year, a.date.month, a.date.day);
+    final dateOnlyB = DateTime(b.date.year, b.date.month, b.date.day);
+    final dateCompare = dateOnlyB.compareTo(dateOnlyA);
+    if (dateCompare != 0) return dateCompare;
+    return b.date.compareTo(a.date);
+  });
+
+  return entries;
 }
 
 /// Flat, sorted list of every transaction in the currently selected month.
@@ -62,11 +75,11 @@ final dayEntriesProvider = FutureProvider.autoDispose.family<List<TxEntry>, Date
   final accounts = {for (final a in await ref.read(accountRepositoryProvider).getAll()) a.id: a.name};
 
   return [
-    ...expenses.map((e) => TxEntry(e.date, -e.amount,
+    ...expenses.map((e) => TxEntry(e.id!, TxType.expense, e.date, -e.amount,
         '${categories[e.categoryId] ?? '?'} · ${accounts[e.accountId] ?? '?'}')),
-    ...incomes.map((i) => TxEntry(i.date, i.amount,
+    ...incomes.map((i) => TxEntry(i.id!, TxType.income, i.date, i.amount,
         '${sources[i.sourceId] ?? '?'} · ${accounts[i.accountId] ?? '?'}')),
-    ...dayTransfers.map((t) => TxEntry(t.date, -t.amount,
+    ...dayTransfers.map((t) => TxEntry(t.id!, TxType.transfer, t.date, -t.amount,
         '${accounts[t.fromAccountId] ?? '?'} → ${accounts[t.toAccountId] ?? '?'}')),
   ]..sort((a, b) => b.date.compareTo(a.date));
 });

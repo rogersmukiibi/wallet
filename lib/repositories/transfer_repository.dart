@@ -1,3 +1,5 @@
+// lib/repositories/transfer_repository.dart
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/utils/month.dart';
 import '../models/transfer.dart';
@@ -39,5 +41,23 @@ class TransferRepository {
       await ref.read(accountRepositoryProvider)
           .recalculateRolloversFrom(MonthKey.fromDate(DateTime.parse(rows.first['date'] as String)));
     }
+  }
+
+  Future<Transfer?> getById(int id) async {
+    final db = await ref.read(databaseProvider.future);
+    final rows = await db.query('transfers', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : Transfer.fromMap(rows.first);
+  }
+
+  Future<void> update(Transfer transfer) async {
+    final db = await ref.read(databaseProvider.future);
+    final oldRows = await db.query('transfers', where: 'id = ?', whereArgs: [transfer.id], limit: 1);
+    await db.update('transfers', transfer.toMap(), where: 'id = ?', whereArgs: [transfer.id]);
+
+    if (oldRows.isNotEmpty) {
+      final oldDate = DateTime.parse(oldRows.first['date'] as String);
+      await ref.read(accountRepositoryProvider).recalculateRolloversFrom(MonthKey.fromDate(oldDate));
+    }
+    await ref.read(accountRepositoryProvider).recalculateRolloversFrom(MonthKey.fromDate(transfer.date));
   }
 }

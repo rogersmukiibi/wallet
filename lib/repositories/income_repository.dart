@@ -52,4 +52,15 @@ class IncomeRepository {
         where: 'date >= ? AND date < ?', whereArgs: [startStr, endExclusive], orderBy: 'date DESC');
     return rows.map(Income.fromMap).toList();
   }
+
+  Future<Income?> getById(int id) async {
+    final db = await ref.read(databaseProvider.future);
+    final rows = await db.query('incomes', where: 'id = ?', whereArgs: [id], limit: 1);
+    return rows.isEmpty ? null : Income.fromMap(rows.first);
+  }
+
+  Future<void> update(Income income) async {
+    final db = await ref.read(databaseProvider.future);
+    await db.update('incomes', income.toMap(), where: 'id = ?', whereArgs: [income.id]);
+  }
 }

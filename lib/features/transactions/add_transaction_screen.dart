@@ -5,9 +5,25 @@ import '../../models/tx_type.dart';
 import '../../providers/transaction_form_providers.dart';
 import '../../providers/account_providers.dart';
 import '../../providers/list_providers.dart';
+import '../../providers/transaction_providers.dart'; 
 
-class AddTransactionScreen extends ConsumerWidget {
-  const AddTransactionScreen({super.key});
+class AddTransactionScreen extends ConsumerStatefulWidget {
+  final TxEntry? editing;
+  const AddTransactionScreen({super.key, this.editing});
+
+  @override
+  ConsumerState<AddTransactionScreen> createState() => _AddTransactionScreenState();
+}
+
+class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editing != null) {
+      Future.microtask(() =>
+          ref.read(transactionFormProvider.notifier).loadForEdit(widget.editing!));
+    }
+  }
 
   static const _expenseColor = Color(0xFFFF6B5E);
   static const _incomeColor = Color(0xFF4E9BFF);
@@ -19,7 +35,7 @@ class AddTransactionScreen extends ConsumerWidget {
       };
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final form = ref.watch(transactionFormProvider);
     final notifier = ref.read(transactionFormProvider.notifier);
     final accent = _accentFor(form.type);
@@ -27,10 +43,18 @@ class AddTransactionScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(switch (form.type) {
-          TxType.expense => 'Expense',
-          TxType.income => 'Income',
-          TxType.transfer => 'Transfer',
+          TxType.expense => form.isEditing ? 'Edit Expense' : 'Expense',
+          TxType.income => form.isEditing ? 'Edit Income' : 'Income',
+          TxType.transfer => form.isEditing ? 'Edit Transfer' : 'Transfer',
         }),
+        actions: [
+          if (form.isEditing)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete',
+              onPressed: () => _confirmDelete(context, notifier),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -95,19 +119,43 @@ class AddTransactionScreen extends ConsumerWidget {
                               if (context.mounted) Navigator.pop(context);
                             }
                           : null,
-                      child: const Text('Save'),
+                      child: Text(form.isEditing ? 'Update' : 'Save'),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  OutlinedButton(
-                    onPressed: form.isValid ? () => notifier.save() : null,
-                    child: const Text('Continue'),
-                  ),
+                  if (!form.isEditing) ...[
+                    const SizedBox(width: 12),
+                    OutlinedButton(
+                      onPressed: form.isValid ? () => notifier.save() : null,
+                      child: const Text('Continue'),
+                    ),
+                  ],
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, TransactionFormNotifier notifier) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete transaction?'),
+        content: const Text('This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              await notifier.deleteCurrent();
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }
